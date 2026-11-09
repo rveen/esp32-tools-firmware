@@ -603,11 +603,14 @@ static int charAdvanceB(uint16_t cp) {
 }
 
 int getTextWidth(const String& txt, int size, FontType font) {
+    // FONT_BIG is rendered with the anti-aliased smooth font, so measure it
+    // there to keep centred/right-aligned titles in the right place.
+    if (font == FONT_BIG) return tft.smoothBigWidthLogical(txt, size);
     int total = 0;
     int idx = 0;
     while (idx < (int)txt.length()) {
         uint16_t cp = nextCodepoint(txt, idx);
-        total += (font == FONT_SMALL) ? charAdvanceS(cp) : charAdvanceB(cp);
+        total += charAdvanceS(cp);
     }
     return total * size;
 }
@@ -640,6 +643,12 @@ String truncateToWidth(const String& txt, int maxWidth, int size, FontType font)
 // Renderizado genérico
 static void drawStringGeneric(int x, int y, const String& txt,
                               uint16_t color, int size, FontType font) {
+    // FONT_BIG titles use the anti-aliased smooth font, drawn at full physical
+    // resolution. Blended against UI_BG (the solid background behind titles).
+    if (font == FONT_BIG) {
+        tft.drawSmoothBig(x, y, txt, color, UI_BG, size);
+        return;
+    }
     int idx = 0;
     int cx = x;
     while (idx < (int)txt.length()) {

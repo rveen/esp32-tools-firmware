@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <TFT_eSPI.h>
+#include "TitleFonts.h"
 
 class DisplayTFT : public TFT_eSPI {
 public:
@@ -45,6 +46,31 @@ public:
     int32_t nativeTextWidth(const String& text, uint8_t font = 2, uint8_t size = 1) {
         TFT_eSPI::setTextSize(size);
         return (TFT_eSPI::textWidth(text, font) * SCALE_DEN) / SCALE_NUM;
+    }
+
+    // ── Anti-aliased title rendering (FONT_BIG) ─────────────────────────────
+    // Draws an anti-aliased smooth-font string at true physical resolution
+    // (bypassing the 4/3 logical->physical stretch that makes bitmap glyphs
+    // look jagged). Coordinates are logical top-left; `bg` is the solid colour
+    // the glyphs are blended against (smooth fonts need a known background).
+    void drawSmoothBig(int32_t x, int32_t y, const String& text,
+                       uint32_t fg, uint32_t bg, int size) {
+        loadTitleFont(size);
+        TFT_eSPI::setTextColor((uint16_t)fg, (uint16_t)bg);
+        TFT_eSPI::setTextDatum(TL_DATUM);
+        physicalMode = true;
+        TFT_eSPI::drawString(text, mapX(x), mapY(y));
+        physicalMode = false;
+        TFT_eSPI::unloadFont();   // restore GLCD path for drawNativeString()
+    }
+
+    // Logical width of a FONT_BIG string in the smooth font, so centred and
+    // right-aligned titles are positioned to match what is actually drawn.
+    int32_t smoothBigWidthLogical(const String& text, int size) {
+        loadTitleFont(size);
+        int32_t w = TFT_eSPI::textWidth(text);
+        TFT_eSPI::unloadFont();
+        return (w * SCALE_DEN) / SCALE_NUM;
     }
 
     void drawPixel(int32_t x, int32_t y, uint32_t color) override {
@@ -192,6 +218,13 @@ public:
 
 private:
     bool physicalMode = false;
+
+    void loadTitleFont(int size) {
+        const uint8_t* f = TITLE_FONT_16;      // size 1  -> 16 px
+        if (size >= 3)      f = TITLE_FONT_48; // size 3+ -> 48 px
+        else if (size == 2) f = TITLE_FONT_32; // size 2  -> 32 px
+        TFT_eSPI::loadFont(f);
+    }
 
     static int32_t scaledValue(int32_t value) {
         int32_t numerator = value * SCALE_NUM;
