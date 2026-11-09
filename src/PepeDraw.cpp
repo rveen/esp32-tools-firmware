@@ -603,16 +603,10 @@ static int charAdvanceB(uint16_t cp) {
 }
 
 int getTextWidth(const String& txt, int size, FontType font) {
-    // FONT_BIG is rendered with the anti-aliased smooth font, so measure it
-    // there to keep centred/right-aligned titles in the right place.
+    // Both fonts are now rendered with anti-aliased smooth fonts, so measure
+    // them there to keep centred/right-aligned text in the right place.
     if (font == FONT_BIG) return tft.smoothBigWidthLogical(txt, size);
-    int total = 0;
-    int idx = 0;
-    while (idx < (int)txt.length()) {
-        uint16_t cp = nextCodepoint(txt, idx);
-        total += charAdvanceS(cp);
-    }
-    return total * size;
+    return tft.smoothSmallWidthLogical(txt, size);
 }
 
 int getFontHeight(int size, FontType font) {
@@ -643,34 +637,13 @@ String truncateToWidth(const String& txt, int maxWidth, int size, FontType font)
 // Renderizado genérico
 static void drawStringGeneric(int x, int y, const String& txt,
                               uint16_t color, int size, FontType font) {
-    // FONT_BIG titles use the anti-aliased smooth font, drawn at full physical
-    // resolution. Blended against UI_BG (the solid background behind titles).
+    // Both fonts render as transparent anti-aliased smooth fonts at full
+    // physical resolution; edges blend against the real on-screen background.
     if (font == FONT_BIG) {
         tft.drawSmoothBig(x, y, txt, color, UI_BG, size);
         return;
     }
-    int idx = 0;
-    int cx = x;
-    while (idx < (int)txt.length()) {
-        uint16_t cp = nextCodepoint(txt, idx);
-        if (font == FONT_SMALL) {
-            GlyphS g;
-            if (lookupSmall(cp, g)) {
-                drawGlyphS(cx, y, g, color, size);
-                cx += (g.width + 1) * size;
-            } else {
-                cx += 4 * size;   // carácter desconocido = espacio
-            }
-        } else {
-            GlyphB g;
-            if (lookupBig(cp, g)) {
-                drawGlyphB(cx, y, g, color, size);
-                cx += (g.width + 1) * size;
-            } else {
-                cx += 5 * size;
-            }
-        }
-    }
+    tft.drawSmoothSmall(x, y, txt, color, size);
 }
 
 // ── Compatibilidad hacia atrás ────────────────────────────────────────────

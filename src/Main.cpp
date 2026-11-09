@@ -80,6 +80,7 @@ void setup() {
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN);
     tft.begin();
     tft.setRotation(3);
+    tft.beginSmoothFonts();   // transparent anti-aliased text via MISO read-back
 
     tft.fillScreen(TFT_BLACK);
 

@@ -48,29 +48,34 @@ public:
         return (TFT_eSPI::textWidth(text, font) * SCALE_DEN) / SCALE_NUM;
     }
 
-    // ── Anti-aliased title rendering (FONT_BIG) ─────────────────────────────
-    // Draws an anti-aliased smooth-font string at true physical resolution
-    // (bypassing the 4/3 logical->physical stretch that makes bitmap glyphs
-    // look jagged). Coordinates are logical top-left; `bg` is the solid colour
-    // the glyphs are blended against (smooth fonts need a known background).
-    void drawSmoothBig(int32_t x, int32_t y, const String& text,
-                       uint32_t fg, uint32_t bg, int size) {
-        loadTitleFont(size);
-        TFT_eSPI::setTextColor((uint16_t)fg, (uint16_t)bg);
-        TFT_eSPI::setTextDatum(TL_DATUM);
-        physicalMode = true;
-        TFT_eSPI::drawString(text, mapX(x), mapY(y));
-        physicalMode = false;
-        TFT_eSPI::unloadFont();   // restore GLCD path for drawNativeString()
+    // ── Anti-aliased smooth text ────────────────────────────────────────────
+    // Enables transparent anti-aliasing: smooth-font edge pixels are blended
+    // against the real on-screen background read back over MISO (requires the
+    // panel's SDO wired to GPIO19 and TFT_MISO=19). Call once after begin().
+    void beginSmoothFonts() {
+        TFT_eSPI::setCallback(&DisplayTFT::readBgCallback);
     }
 
-    // Logical width of a FONT_BIG string in the smooth font, so centred and
-    // right-aligned titles are positioned to match what is actually drawn.
+    // Draw an anti-aliased string at true physical resolution (bypassing the
+    // 4/3 logical->physical stretch). Transparent: glyph edges blend against
+    // whatever is already on screen, so it works on any background. `big`
+    // selects the bold title fonts, otherwise the regular body fonts.
+    void drawSmoothBig(int32_t x, int32_t y, const String& text,
+                       uint32_t fg, uint32_t /*bg, unused*/, int size) {
+        drawSmooth(x, y, text, fg, size, true);
+    }
+    void drawSmoothSmall(int32_t x, int32_t y, const String& text,
+                         uint32_t fg, int size) {
+        drawSmooth(x, y, text, fg, size, false);
+    }
+
+    // Logical width of a smooth string, so centred/right-aligned text is
+    // positioned to match what is actually drawn.
     int32_t smoothBigWidthLogical(const String& text, int size) {
-        loadTitleFont(size);
-        int32_t w = TFT_eSPI::textWidth(text);
-        TFT_eSPI::unloadFont();
-        return (w * SCALE_DEN) / SCALE_NUM;
+        return smoothWidthLogical(text, size, true);
+    }
+    int32_t smoothSmallWidthLogical(const String& text, int size) {
+        return smoothWidthLogical(text, size, false);
     }
 
     void drawPixel(int32_t x, int32_t y, uint32_t color) override {
@@ -219,11 +224,75 @@ public:
 private:
     bool physicalMode = false;
 
-    void loadTitleFont(int size) {
-        const uint8_t* f = TITLE_FONT_16;      // size 1  -> 16 px
-        if (size >= 3)      f = TITLE_FONT_48; // size 3+ -> 48 px
-        else if (size == 2) f = TITLE_FONT_32; // size 2  -> 32 px
+    // Smooth-font background read-back callback (physical coords). Blends AA
+    // edges against the current framebuffer pixel. Served from the bulk-read
+    // buffer when available, else falls back to a direct readPixel().
+    static uint16_t readBgCallback(uint16_t x, uint16_t y);
+
+    // One bulk SPI read of a region into a RAM buffer that readBgCallback
+    // indexes. Capped so a very wide string falls back to per-pixel reads
+    // rather than risk a large allocation.
+    static uint16_t* s_bgBuf;
+    static int32_t s_bgX, s_bgY, s_bgW, s_bgH;
+
+    void captureBg(int32_t x, int32_t y, int32_t w, int32_t h) {
+        s_bgBuf = nullptr;
+        if (w <= 0 || h <= 0) return;
+        if (x < 0) { w += x; x = 0; }
+        if (y < 0) { h += y; y = 0; }
+        if (x + w > TFT_eSPI::width())  w = TFT_eSPI::width()  - x;
+        if (y + h > TFT_eSPI::height()) h = TFT_eSPI::height() - y;
+        if (w <= 0 || h <= 0) return;
+        size_t n = (size_t)w * h;
+        if (n > 32768) return;                 // >64 KB: keep per-pixel fallback
+        uint16_t* b = (uint16_t*)malloc(n * 2);
+        if (!b) return;                        // OOM: per-pixel fallback
+        TFT_eSPI::readRect(x, y, w, h, b);
+        s_bgBuf = b; s_bgX = x; s_bgY = y; s_bgW = w; s_bgH = h;
+    }
+    void releaseBg() {
+        if (s_bgBuf) { free(s_bgBuf); s_bgBuf = nullptr; }
+    }
+
+    void loadSmoothFont(int size, bool big) {
+        const uint8_t* f;
+        if (big) {
+            f = TITLE_FONT_16;                     // size 1  -> 16 px
+            if (size >= 3)      f = TITLE_FONT_48; // size 3+ -> 48 px
+            else if (size == 2) f = TITLE_FONT_32; // size 2  -> 32 px
+        } else {
+            f = BODY_FONT_10;                      // size 1  -> 10 px
+            if (size >= 3)      f = BODY_FONT_28;  // size 3+ -> 28 px
+            else if (size == 2) f = BODY_FONT_19;  // size 2  -> 19 px
+        }
         TFT_eSPI::loadFont(f);
+    }
+
+    void drawSmooth(int32_t x, int32_t y, const String& text,
+                    uint32_t fg, int size, bool big) {
+        loadSmoothFont(size, big);
+        // Single-arg colour => _fillbg=false => transparent; the read-back
+        // callback supplies the real background for edge anti-aliasing.
+        TFT_eSPI::setTextColor((uint16_t)fg);
+        TFT_eSPI::setTextDatum(TL_DATUM);
+        physicalMode = true;
+        int32_t px = mapX(x), py = mapY(y);
+        // Capture the whole string's background in ONE bulk SPI read, so the
+        // per-edge-pixel callback is served from RAM instead of doing a slow
+        // readPixel() (address-window setup) for every anti-aliased pixel.
+        captureBg(px - 1, py - 1,
+                  TFT_eSPI::textWidth(text) + 2, TFT_eSPI::fontHeight() + 2);
+        TFT_eSPI::drawString(text, px, py);
+        releaseBg();
+        physicalMode = false;
+        TFT_eSPI::unloadFont();   // restore GLCD path for drawNativeString()
+    }
+
+    int32_t smoothWidthLogical(const String& text, int size, bool big) {
+        loadSmoothFont(size, big);
+        int32_t w = TFT_eSPI::textWidth(text);
+        TFT_eSPI::unloadFont();
+        return (w * SCALE_DEN) / SCALE_NUM;
     }
 
     static int32_t scaledValue(int32_t value) {
