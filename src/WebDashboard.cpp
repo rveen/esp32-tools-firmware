@@ -1,7 +1,6 @@
 #include "WebDashboard.h"
 
 #include <Arduino.h>
-#include <ESP.h>
 #include <WebServer.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
