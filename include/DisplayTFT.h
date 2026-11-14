@@ -78,6 +78,30 @@ public:
         return smoothWidthLogical(text, size, false);
     }
 
+    // Native (physical-pixel) width of a smooth string, for laying text out
+    // inside an off-screen sprite that is composited at physical resolution.
+    int32_t smoothWidthPhysical(const String& text, int size, bool big) {
+        TFT_eSPI::loadFont(smoothFontPtr(size, big));
+        int32_t w = TFT_eSPI::textWidth(text);
+        TFT_eSPI::unloadFont();
+        return w;
+    }
+
+    // Draw a smooth string INTO an off-screen sprite at physical pixel coords
+    // (sx, sy) local to that sprite. Opaque: anti-aliased edges blend fg->bg,
+    // so the region must be a uniform `bg` (e.g. the sprite filled with it).
+    // This needs no MISO read-back — the background is known in RAM — and lets
+    // callers compose a frame off-screen and push it flicker-free.
+    void drawSmoothSprite(TFT_eSprite& spr, int32_t sx, int32_t sy,
+                          const String& text, uint32_t fg, uint32_t bg,
+                          int size, bool big) {
+        spr.loadFont(smoothFontPtr(size, big));
+        spr.setTextColor((uint16_t)fg, (uint16_t)bg);
+        spr.setTextDatum(TL_DATUM);
+        spr.drawString(text, sx, sy);
+        spr.unloadFont();
+    }
+
     void drawPixel(int32_t x, int32_t y, uint32_t color) override {
         if (physicalMode) {
             fillPhysicalRect(x, y, 1, 1, color);
@@ -254,18 +278,21 @@ private:
         if (s_bgBuf) { free(s_bgBuf); s_bgBuf = nullptr; }
     }
 
-    void loadSmoothFont(int size, bool big) {
-        const uint8_t* f;
+    // Pick the baked smooth-font blob for a (size, big) pair. Exposed so the
+    // same font can be loaded into an off-screen TFT_eSprite, not just the TFT.
+    const uint8_t* smoothFontPtr(int size, bool big) {
         if (big) {
-            f = TITLE_FONT_16;                     // size 1  -> 16 px
-            if (size >= 3)      f = TITLE_FONT_48; // size 3+ -> 48 px
-            else if (size == 2) f = TITLE_FONT_32; // size 2  -> 32 px
-        } else {
-            f = BODY_FONT_13;                      // size 1  -> 13 px
-            if (size >= 3)      f = BODY_FONT_28;  // size 3+ -> 28 px
-            else if (size == 2) f = BODY_FONT_19;  // size 2  -> 19 px
+            if (size >= 3)      return TITLE_FONT_48; // size 3+ -> 48 px
+            if (size == 2)      return TITLE_FONT_32; // size 2  -> 32 px
+            return TITLE_FONT_16;                     // size 1  -> 16 px
         }
-        TFT_eSPI::loadFont(f);
+        if (size >= 3)      return BODY_FONT_28;       // size 3+ -> 28 px
+        if (size == 2)      return BODY_FONT_19;       // size 2  -> 19 px
+        return BODY_FONT_13;                           // size 1  -> 13 px
+    }
+
+    void loadSmoothFont(int size, bool big) {
+        TFT_eSPI::loadFont(smoothFontPtr(size, big));
     }
 
     void drawSmooth(int32_t x, int32_t y, const String& text,

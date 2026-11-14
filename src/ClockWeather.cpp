@@ -436,40 +436,74 @@ static void drawMainScreenFrame() {
     drawStringCustom(10, 226, "OK(HOLD): EXIT", UI_ACCENT, 1);
 }
 
-static void drawClock(struct tm* t) {
-    // Borrar área del reloj
-    tft.fillRect(2, 24, 316, 105, TFT_BLACK);
+// ── Time line: flicker-free via an off-screen sprite ────────────────────────
+// The HH:MM:SS changes every second, so redrawing it the old way (wipe the
+// whole clock area to black, then repaint) showed a visible black flash each
+// tick. Instead we compose just the time line into a persistent sprite (RAM
+// framebuffer) and push it in one SPI blit, so the panel never shows a blank
+// intermediate frame. The clock background is solid black, so the smooth font
+// is drawn opaquely against black inside the sprite — no MISO read-back needed.
+//
+// Sprite region in LOGICAL coords (mapped to physical when created/pushed),
+// sized to the time line only to keep the RAM allocation small.
+static constexpr int TIME_LX = 30;
+static constexpr int TIME_LY = 33;
+static constexpr int TIME_LW = 260;
+static constexpr int TIME_LH = 50;
 
-    // Hora gigante centrada
-    String timeStr = formatHHMMSS(t);
-    int timeW = getTextWidth(timeStr, 4, FONT_BIG);
+static TFT_eSprite g_timeSpr(&tft);
+static bool        g_timeSprOk = false;
 
-    // AM/PM al lado en tamaño menor
-    String ampmStr = getAmPm(t);
-    int ampmW = getTextWidth(ampmStr, 2, FONT_BIG);
+// Date + year line, drawn once and only repainted when the day changes.
+static void drawClockDate(struct tm* t) {
+    tft.fillRect(2, 96, 316, 32, TFT_BLACK);
 
-    // Centrado considerando hora + espacio + AM/PM
-    int totalW = timeW + 8 + ampmW;
-    int timeX = (320 - totalW) / 2;
-    int ampmX = timeX + timeW + 8;
-
-    drawStringBig(timeX, 35, timeStr, UI_MAIN, 4);
-    // AM/PM con color distinto y un poco más abajo (alineado al baseline)
-    uint16_t ampmColor = (t->tm_hour < 12) ? TFT_CYAN : TFT_ORANGE;
-    drawStringBig(ampmX, 55, ampmStr, ampmColor, 2);
-
-    // Fecha abajo
     String dateStr = formatDate(t);
     int dateW = getTextWidth(dateStr, 1, FONT_SMALL);
     int dateX = (320 - dateW) / 2;
     if (dateX < 5) dateX = 5;
     drawStringCustom(dateX, 100, dateStr, UI_ACCENT, 1);
 
-    // Año
     char yearBuf[8];
     snprintf(yearBuf, sizeof(yearBuf), "%d", t->tm_year + 1900);
     int yearW = getTextWidth(String(yearBuf), 1, FONT_SMALL);
     drawStringCustom((320 - yearW) / 2, 115, String(yearBuf), UI_ACCENT, 1);
+}
+
+static void drawClockTime(struct tm* t) {
+    String   timeStr   = formatHHMMSS(t);
+    String   ampmStr   = getAmPm(t);
+    uint16_t ampmColor = (t->tm_hour < 12) ? TFT_CYAN : TFT_ORANGE;
+
+    if (g_timeSprOk) {
+        // Centre the time + AM/PM group across the full logical width, then
+        // place it relative to the sprite's own top-left, all in physical px.
+        int32_t twp   = tft.smoothWidthPhysical(timeStr, 4, true);
+        int32_t awp   = tft.smoothWidthPhysical(ampmStr, 2, true);
+        const int32_t gap = 11;                 // ~8 logical px
+        int32_t total = twp + gap + awp;
+        int32_t groupLeft = tft.logicalToPhysicalX(160) - total / 2;
+        int32_t sprX = tft.logicalToPhysicalX(TIME_LX);
+        int32_t sprY = tft.logicalToPhysicalY(TIME_LY);
+
+        g_timeSpr.fillSprite(TFT_BLACK);
+        tft.drawSmoothSprite(g_timeSpr, groupLeft - sprX,
+                             tft.logicalToPhysicalY(35) - sprY,
+                             timeStr, UI_MAIN, TFT_BLACK, 4, true);
+        tft.drawSmoothSprite(g_timeSpr, groupLeft - sprX + twp + gap,
+                             tft.logicalToPhysicalY(55) - sprY,
+                             ampmStr, ampmColor, TFT_BLACK, 2, true);
+        g_timeSpr.pushSprite(sprX, sprY);
+    } else {
+        // Fallback when the sprite could not be allocated: clear just the time
+        // band and draw directly (small localised flicker, but functional).
+        tft.fillRect(TIME_LX, TIME_LY, TIME_LW, TIME_LH, TFT_BLACK);
+        int timeW  = getTextWidth(timeStr, 4, FONT_BIG);
+        int ampmW  = getTextWidth(ampmStr, 2, FONT_BIG);
+        int timeX  = (320 - (timeW + 8 + ampmW)) / 2;
+        drawStringBig(timeX, 35, timeStr, UI_MAIN, 4);
+        drawStringBig(timeX + timeW + 8, 55, ampmStr, ampmColor, 2);
+    }
 }
 
 static void drawWeather() {
@@ -519,10 +553,23 @@ static void drawWeather() {
 static void mainLoop() {
     drawMainScreenFrame();
 
+    // Persistent off-screen buffer for the per-second time line (see
+    // drawClockTime). Allocated once here and reused every tick to avoid
+    // heap churn; falls back to direct drawing if the allocation fails.
+    int32_t sprW = tft.logicalToPhysicalX(TIME_LX + TIME_LW) -
+                   tft.logicalToPhysicalX(TIME_LX);
+    int32_t sprH = tft.logicalToPhysicalY(TIME_LY + TIME_LH) -
+                   tft.logicalToPhysicalY(TIME_LY);
+    g_timeSpr.setColorDepth(16);
+    g_timeSprOk = (g_timeSpr.createSprite(sprW, sprH) != nullptr);
+
     // Initial draws
     struct tm timeinfo;
+    String lastDate;
     if (getLocalTime(&timeinfo)) {
-        drawClock(&timeinfo);
+        drawClockDate(&timeinfo);
+        lastDate = formatDate(&timeinfo);
+        drawClockTime(&timeinfo);
     }
     drawWeather();
 
@@ -537,7 +584,12 @@ static void mainLoop() {
         // Update clock cada segundo
         if (millis() - g_lastSecondTick >= 1000) {
             if (getLocalTime(&timeinfo)) {
-                drawClock(&timeinfo);
+                drawClockTime(&timeinfo);
+                String d = formatDate(&timeinfo);
+                if (d != lastDate) {            // repaint date only at midnight
+                    drawClockDate(&timeinfo);
+                    lastDate = d;
+                }
             }
             g_lastSecondTick = millis();
         }
@@ -570,6 +622,11 @@ static void mainLoop() {
         }
 
         delay(50);
+    }
+
+    if (g_timeSprOk) {
+        g_timeSpr.deleteSprite();
+        g_timeSprOk = false;
     }
 }
 
