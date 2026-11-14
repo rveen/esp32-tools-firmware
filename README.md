@@ -35,5 +35,4 @@ Proyectos cuyas ideas, metodos o conjunto de funciones sirvieron de referencia. 
 
 Las fuentes suavizadas de `include/fonts/` (incluidas tambien en el firmware) se generaron a partir de [Liberation Sans](https://github.com/liberationfonts/liberation-fonts), Copyright (c) 2012 Red Hat, Inc. y (c) 2010 Google Corporation, bajo la SIL Open Font License 1.1. Ver [include/fonts/LICENSE-LiberationSans.txt](include/fonts/LICENSE-LiberationSans.txt).
 
-[Volver al indice](#indice)
 
