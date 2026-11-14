@@ -25,7 +25,7 @@ Proyecto creado y probado por PepeAngell para ESP32-TOOLS-PRO-480x320-V2.0.
 
 ### Contribuciones indirectas
 
-Proyectos cuyas ideas, metodos o conjunto de funciones sirvieron de referencia. No se encontro codigo copiado de ellos.
+Proyectos cuyas ideas, metodos o conjunto de funciones sirvieron de referencia. 
 
 - [GANESH-ICMC/esp32-deauther](https://github.com/GANESH-ICMC/esp32-deauther) y [risinek/esp32-wifi-penetration-tool](https://github.com/risinek/esp32-wifi-penetration-tool): tecnica WiFi usada en `src/Deauther.cpp`.
 - [cifertech/nRFBox](https://github.com/cifertech/nRFBox) y [EmenstaNougat/ESP32-BlueJammer](https://github.com/EmenstaNougat/ESP32-BlueJammer): enfoque similar para los modulos nRF24.
