@@ -261,7 +261,7 @@ private:
             if (size >= 3)      f = TITLE_FONT_48; // size 3+ -> 48 px
             else if (size == 2) f = TITLE_FONT_32; // size 2  -> 32 px
         } else {
-            f = BODY_FONT_10;                      // size 1  -> 10 px
+            f = BODY_FONT_13;                      // size 1  -> 13 px
             if (size >= 3)      f = BODY_FONT_28;  // size 3+ -> 28 px
             else if (size == 2) f = BODY_FONT_19;  // size 2  -> 19 px
         }

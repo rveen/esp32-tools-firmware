@@ -24,13 +24,13 @@ uint16_t DisplayTFT::readBgCallback(uint16_t x, uint16_t y) {
 #include "fonts/TitleFont16.h"
 #include "fonts/TitleFont32.h"
 #include "fonts/TitleFont48.h"
-#include "fonts/BodyFont10.h"
+#include "fonts/BodyFont13.h"
 #include "fonts/BodyFont19.h"
 #include "fonts/BodyFont28.h"
 
 const uint8_t* const TITLE_FONT_16 = TitleFont16;
 const uint8_t* const TITLE_FONT_32 = TitleFont32;
 const uint8_t* const TITLE_FONT_48 = TitleFont48;
-const uint8_t* const BODY_FONT_10 = BodyFont10;
+const uint8_t* const BODY_FONT_13 = BodyFont13;
 const uint8_t* const BODY_FONT_19 = BodyFont19;
 const uint8_t* const BODY_FONT_28 = BodyFont28;

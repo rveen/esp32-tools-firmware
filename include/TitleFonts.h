@@ -13,8 +13,9 @@ extern const uint8_t* const TITLE_FONT_32;
 extern const uint8_t* const TITLE_FONT_48;
 
 // Body (FONT_SMALL) smooth fonts, Liberation Sans Regular, baked at the body
-// text physical heights (7 * size * 4/3):
-//   size 1 -> 10 px, size 2 -> 19 px, size 3 -> 28 px.
-extern const uint8_t* const BODY_FONT_10;
+// text physical heights:
+//   size 1 -> 13 px, size 2 -> 19 px, size 3 -> 28 px.
+// (size 1 was bumped from 10 px to 13 px for on-screen legibility.)
+extern const uint8_t* const BODY_FONT_13;
 extern const uint8_t* const BODY_FONT_19;
 extern const uint8_t* const BODY_FONT_28;

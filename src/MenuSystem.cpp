@@ -40,10 +40,10 @@ static constexpr uint16_t MOD_GLOW   = 0x07FF;
 static constexpr uint16_t MOD_GLOW_2 = 0x03EF;
 
 static constexpr int MENU_TOP = 42;
-static constexpr int ROW_H    = 31;
+static constexpr int ROW_H    = 33;
 static constexpr int ROW_X    = 8;
 static constexpr int ROW_W    = 152;
-static constexpr int ROW_BOX_H = 27;
+static constexpr int ROW_BOX_H = 29;
 static constexpr int PREVIEW_X = 168;
 static constexpr int PREVIEW_Y = 42;
 static constexpr int PREVIEW_W = 144;
@@ -330,8 +330,8 @@ static void drawMainRow(int idx, bool selected, bool pressed) {
     }
 
     drawVectorIcon(e.icon, 26, y + 14, fg, accent);
-    drawStringBig(48, y + 4, e.title, fg, 1);
-    drawStringCustom(48, y + 19, e.subtitle, fg, 1);
+    drawStringBig(48, y + 3, e.title, fg, 1);
+    drawStringCustom(48, y + 16, e.subtitle, fg, 1);
 
     String idxText = "0" + String(idx + 1);
     drawBitmapRight(151, y + 10, idxText, fg, 1, FONT_SMALL);
