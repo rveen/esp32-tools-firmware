@@ -489,6 +489,8 @@ Si la subida falla con error de boot/serial, manten presionado `BOOT` al iniciar
 
 Proyecto creado y probado por PepeAngell para ESP32-TOOLS-PRO-480x320-V2.0.
 
+Las fuentes suavizadas de `include/fonts/` (incluidas tambien en el firmware) se generaron a partir de [Liberation Sans](https://github.com/liberationfonts/liberation-fonts), Copyright (c) 2012 Red Hat, Inc. y (c) 2010 Google Corporation, bajo la SIL Open Font License 1.1. Ver [include/fonts/LICENSE-LiberationSans.txt](include/fonts/LICENSE-LiberationSans.txt).
+
 [Volver al indice](#indice)
 
 ## Redes y enlaces
