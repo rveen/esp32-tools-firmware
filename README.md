@@ -10,7 +10,7 @@ La arquitectura de radios (radio nativa del ESP32, los dos modulos nRF24L01 y co
 
 ## Creditos
 
-Proyecto creado y probado por PepeAngell para ESP32-TOOLS-PRO-480x320-V2.0.
+Proyecto creado inicialmente por PepeAngell.
 
 ### Contribuciones directas
 
