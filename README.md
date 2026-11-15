@@ -6,6 +6,8 @@ Este firmware proviene de [github.com/pepeangell5](https://github.com/pepeangell
 
 La arquitectura de radios (radio nativa del ESP32, los dos modulos nRF24L01 y como se reparten entre las herramientas) se documenta en [DESIGN.md](DESIGN.md).
 
+<img src="https://github.com/rveen/esp32-rf-tools/blob/main/img/IMG_8668.jpg" style="width:50%">
+
 ## Creditos
 
 Proyecto creado y probado por PepeAngell para ESP32-TOOLS-PRO-480x320-V2.0.
