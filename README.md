@@ -4,6 +4,8 @@ Este firmware proviene de [github.com/pepeangell5](https://github.com/pepeangell
 
 > Usa este firmware solo en tus redes, tus dispositivos y entornos donde tengas autorizacion. Varias funciones pueden escanear, transmitir, interferir o copiar senales. El objetivo de este proyecto es aprendizaje, diagnostico y laboratorio propio.
 
+La arquitectura de radios (radio nativa del ESP32, los dos modulos nRF24L01 y como se reparten entre las herramientas) se documenta en [DESIGN.md](DESIGN.md).
+
 ## Creditos
 
 Proyecto creado y probado por PepeAngell para ESP32-TOOLS-PRO-480x320-V2.0.
